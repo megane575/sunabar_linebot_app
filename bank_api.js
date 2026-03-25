@@ -6,6 +6,12 @@ const BASE_URL = process.env.SUNABAR_BASE_URL;
 const TOKEN = process.env.SUNABAR_ACCESS_TOKEN;
 const ACCOUNT_ID = process.env.SUNABAR_ACCOUNT_ID;
 
+// JSTで YYYY-MM-DD を作る関数
+function formatDateJST(date) {
+  const jst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return jst.toISOString().slice(0, 10);
+}
+
 async function getBalance() {
   try {
     console.log("BASE_URL:", BASE_URL);
@@ -20,6 +26,10 @@ async function getBalance() {
         accountId: ACCOUNT_ID,
       },
     });
+//balances[0] が無いときのガード
+    if (!response.data.balances?.length) {
+      throw new Error("残高データが取得できませんでした");
+    }
 
     const balanceInfo = response.data.balances[0];
 
@@ -38,11 +48,11 @@ async function getBalance() {
 async function getTransactions() {
   try {
     const today = new Date();
-    const dateTo = today.toISOString().slice(0, 10);
+    const dateTo = formatDateJST(today);
 
     const from = new Date();
     from.setMonth(from.getMonth() - 1);
-    const dateFrom = from.toISOString().slice(0, 10);
+    const dateFrom = formatDateJST(from);
 
     console.log("BASE_URL:", BASE_URL);
     console.log("ACCOUNT_ID:", ACCOUNT_ID);
