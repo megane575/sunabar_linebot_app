@@ -69,33 +69,49 @@ function calculateMonthlySummary(transactions, options = {}) {
 function formatMonthlySummaryJa(summary) {
   const { totalIncome, totalExpense, net } = summary;
   return (
-    `今月の収入: ${totalIncome.toLocaleString("ja-JP")} 円\n` +
-    `今月の支出: ${totalExpense.toLocaleString("ja-JP")} 円\n` +
-    `収支（収入−支出）: ${net.toLocaleString("ja-JP")} 円`
+    `【今月の集計】\n` +
+    `収入: ${totalIncome.toLocaleString("ja-JP")} 円\n` +
+    `支出: ${totalExpense.toLocaleString("ja-JP")} 円\n` +
+    `収支: ${net.toLocaleString("ja-JP")} 円`
   );
 }
 
 function formatIncomeExpenseNoticeJa(summary, currentBalance) {
-  const I = summary.totalIncome;
-  const E = summary.totalExpense;
+  const I = summary.totalIncome; // 今月の収入合計
+  const E = summary.totalExpense; // 今月の支出合計
 
-  if (I === 0 && E === 0) {
-    return "入出金ありませんでした";
-  }
+  // 要件: 入出金が0件なら固定文言
+  if (I === 0 && E === 0) return "入出金ありませんでした";
 
-  const B = toAmount(currentBalance?.amount);
+  const currentBalanceAmount =
+    typeof currentBalance === "number"
+      ? currentBalance
+      : toAmount(currentBalance?.amount);
+  const B = toAmount(currentBalanceAmount);
+
   const lines = [];
+  lines.push("【残高・収支確認】");
 
   if (Number.isFinite(B)) {
+    lines.push(`現在の残高: ${B.toLocaleString("ja-JP")} 円`);
+    lines.push("---");
+
+    // 月初残高 O = B - I + E
     const O = B - I + E;
+
     if (I > 0) {
       lines.push(`収入: ${I.toLocaleString("ja-JP")} 円`);
+      // 収入を加えた後の残高 = O + I (= B + E)
       lines.push(
         `収入を加えた後の残高: ${(O + I).toLocaleString("ja-JP")} 円`
       );
     }
+
     if (E > 0) {
+      // 収入がある場合は区切って見やすく
+      if (I > 0) lines.push("---");
       lines.push(`出金: ${E.toLocaleString("ja-JP")} 円`);
+      // 出金を引いた後の残高 = O + I - E (= B)
       lines.push(
         `出金を引いた後の残高: ${(O + I - E).toLocaleString("ja-JP")} 円`
       );
@@ -103,9 +119,8 @@ function formatIncomeExpenseNoticeJa(summary, currentBalance) {
   } else {
     if (I > 0) lines.push(`収入: ${I.toLocaleString("ja-JP")} 円`);
     if (E > 0) lines.push(`出金: ${E.toLocaleString("ja-JP")} 円`);
-    lines.push(
-      "※現在残高を取得できないため、段階の残高は表示できません。"
-    );
+    lines.push("---");
+    lines.push("※現在残高を取得できないため、段階の残高は表示できません。");
   }
 
   return lines.join("\n");
