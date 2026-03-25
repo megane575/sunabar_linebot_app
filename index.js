@@ -27,7 +27,6 @@ exports.handler = async (event) => {
       type: "text",
       text: resMessage,
     });
-
   } else if (reqMessage == "残高") {
     const options = {
       method: "GET",
@@ -47,10 +46,11 @@ exports.handler = async (event) => {
       request(options, function (error, response, body) {
         if (error) {
           console.error(error);
-          client.replyMessage(replyToken, {
-            type: "text",
-            text: "残高照会でエラーが発生しました",
-          })
+          client
+            .replyMessage(replyToken, {
+              type: "text",
+              text: "残高照会でエラーが発生しました",
+            })
             .then(resolve)
             .catch(reject);
           return;
@@ -59,15 +59,15 @@ exports.handler = async (event) => {
         const balance = body.balances[0].balance;
         const resMessage = `残高は ${balance} 円です`;
 
-        client.replyMessage(replyToken, {
-          type: "text",
-          text: resMessage,
-        })
+        client
+          .replyMessage(replyToken, {
+            type: "text",
+            text: resMessage,
+          })
           .then(resolve)
           .catch(reject);
       });
     });
-
   } else {
     resMessage = "「おはよう」または「残高」と送ってください";
     return client.replyMessage(replyToken, {
