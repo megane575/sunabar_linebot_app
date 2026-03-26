@@ -25,8 +25,9 @@ function isInMonth(dateStr, year, month) {
 /* 明細一覧から月次の集計を計算する */
 function calculateMonthlySummary(transactions, options = {}) {
   const now = new Date();
-  const year = options.year ?? now.getFullYear();
-  const month = options.month ?? now.getMonth() + 1;
+  const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const year = options.year ?? jstNow.getUTCFullYear();
+  const month = options.month ?? jstNow.getUTCMonth() + 1;
 
   const empty = {
     totalIncome: 0,
@@ -95,16 +96,14 @@ function formatBalanceAndSummaryJa(summary, currentBalanceAmount) {
 
 /*「定期通知用」前日の集計メッセージを作成 */
 function formatDailyReportJa(transactions, currentBalance) {
-  // 前日の日付を取得
   const now = new Date();
-  // JST補正 (+9時間) してから1日引く
-  const yesterday = new Date(
-    now.getTime() + 9 * 60 * 60 * 1000 - 24 * 60 * 60 * 1000,
-  );
-  console.log("now:", now);
-  console.log("yesterday:", yesterday);
+  // JST基準で「昨日」を計算
+  const yesterdayJST = new Date(now.getTime() + (9 - 24) * 60 * 60 * 1000);
 
-  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  const y = yesterdayJST.getUTCFullYear();
+  const m = String(yesterdayJST.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(yesterdayJST.getUTCDate()).padStart(2, "0");
+  const yesterdayStr = `${y}-${m}-${d}`;
 
   let yesterdayIn = 0;
   let yesterdayOut = 0;
@@ -127,18 +126,12 @@ function formatDailyReportJa(transactions, currentBalance) {
     // 両方動きがない場合
     lines.push("前日の入出金はありません");
   } else {
-    //　入金の表示
-    if (yesterdayIn > 0) {
-      lines.push(`前日の入金：${yesterdayIn.toLocaleString("ja-JP")}円`);
-    } else {
-      lines.push("前日の入金：ありません");
-    }
-    // 出金の表示
-    if (yesterdayOut > 0) {
-      lines.push(`前日の出金：${yesterdayOut.toLocaleString("ja-JP")}円`);
-    } else {
-      lines.push("前日の出金：ありません");
-    }
+    lines.push(
+      `前日の入金：${yesterdayIn > 0 ? yesterdayIn.toLocaleString("ja-JP") + "円" : "ありません"}`,
+    );
+    lines.push(
+      `前日の出金：${yesterdayOut > 0 ? yesterdayOut.toLocaleString("ja-JP") + "円" : "ありません"}`,
+    );
   }
 
   return lines.join("\n");
