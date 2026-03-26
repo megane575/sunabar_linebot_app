@@ -1,8 +1,19 @@
 "use strict";
 
 const line = require("@line/bot-sdk");
+
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  ScanCommand,
+} = require("@aws-sdk/lib-dynamodb");
+
 const bankApi = require("./bank_api");
 const logic = require("./calc_logic");
+
+//DBの初期化
+const client_db = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(client_db);
 
 const config = {
   channelSecret: process.env.channelSecretLINE,
@@ -19,8 +30,19 @@ exports.handler = async (event) => {
     event.source === "aws.events" ||
     event["detail-type"] === "Scheduled Event"
   ) {
-    const userId = process.env.MY_USER_ID;
     try {
+      // DynamoDBから全ユーザーIDを取得
+      const command = new ScanCommand({
+        TableName: "LineUsers_forBOT",
+      });
+      const result = await dynamo.send(command);
+      const users = result.Items;
+
+      if (!users || users.length === 0) {
+        console.log("No users found in DynamoDB.");
+        return { statusCode: 200 };
+      }
+
       const balanceData = await bankApi.getBalance();
       const transactions = await bankApi.getTransactions();
 
@@ -29,11 +51,19 @@ exports.handler = async (event) => {
         transactions,
         balanceData.amount,
       );
+      for (const user of users) {
+        const targetId = user.userId;
+        try {
+          await client.pushMessage(targetId, {
+            type: "text",
+            text: `【あさの定期通知】\n${messageText}`,
+          });
+          console.log(`Successfully sent to: ${targetId}`);
+        } catch (pushErr) {
+          console.error(`Failed to send to ${targetId}:`, pushErr);
+        }
+      }
 
-      await client.pushMessage(userId, {
-        type: "text",
-        text: `【あさの定期通知】\n${messageText}`,
-      });
       return { statusCode: 200 };
     } catch (err) {
       console.error("Scheduled Push Error:", err);
