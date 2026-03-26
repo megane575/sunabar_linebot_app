@@ -120,7 +120,7 @@ function formatDailyReportJa(transactions, currentBalance) {
   }
 
   const B = toAmount(currentBalance);
-  const lines = [`現在の残高：${B.toLocaleString("ja-JP")}円`, "ーーー"];
+  const lines = [`現在の残高：${B.toLocaleString("ja-JP")}円`, "---"];
 
   if (yesterdayIn === 0 && yesterdayOut === 0) {
     // 両方動きがない場合
