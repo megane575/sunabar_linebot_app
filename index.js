@@ -111,7 +111,7 @@ exports.handler = async (event) => {
     } else {
       await client.replyMessage(replyToken, {
         type: "text",
-        text: "「残高」,「明細」,「集計」と送ってみてね！",
+        text: "「残高」,「明細」と送ってみてね！",
       });
     }
   } catch (err) {
