@@ -85,8 +85,6 @@ exports.handler = async (event) => {
       const transactions = await bankApi.getTransactions();
       const sortedTransactions = [...transactions].reverse();
 
-      console.log("transactions:", transactions);
-
       if (transactions.length === 0) {
         await client.replyMessage(replyToken, {
           type: "text",
@@ -119,7 +117,7 @@ exports.handler = async (event) => {
     try {
       await client.replyMessage(replyToken, {
         type: "text",
-        text: "データの取得中にエラーが発生しました。",
+        text: "データの取得中にエラーが発生しました。しばらく時間を置いてから試してね。",
       });
     } catch (replyErr) {
       console.error("Error reporting failure to user:", replyErr);
