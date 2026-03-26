@@ -22,6 +22,7 @@ function isInMonth(dateStr, year, month) {
   return dateStr.startsWith(prefix);
 }
 
+/* 明細一覧から月次の集計を計算する */
 function calculateMonthlySummary(transactions, options = {}) {
   const now = new Date();
   const year = options.year ?? now.getFullYear();
@@ -66,6 +67,7 @@ function calculateMonthlySummary(transactions, options = {}) {
   };
 }
 
+/*「明細」コマンドメッセージを作成 */
 function formatMonthlySummaryJa(summary) {
   const { totalIncome, totalExpense, net } = summary;
   return (
@@ -102,9 +104,7 @@ function formatIncomeExpenseNoticeJa(summary, currentBalance) {
     if (I > 0) {
       lines.push(`収入: ${I.toLocaleString("ja-JP")} 円`);
       // 収入を加えた後の残高 = O + I (= B + E)
-      lines.push(
-        `収入を加えた後の残高: ${(O + I).toLocaleString("ja-JP")} 円`
-      );
+      lines.push(`収入を加えた後の残高: ${(O + I).toLocaleString("ja-JP")} 円`);
     }
 
     if (E > 0) {
@@ -113,7 +113,7 @@ function formatIncomeExpenseNoticeJa(summary, currentBalance) {
       lines.push(`出金: ${E.toLocaleString("ja-JP")} 円`);
       // 出金を引いた後の残高 = O + I - E (= B)
       lines.push(
-        `出金を引いた後の残高: ${(O + I - E).toLocaleString("ja-JP")} 円`
+        `出金を引いた後の残高: ${(O + I - E).toLocaleString("ja-JP")} 円`,
       );
     }
   } else {
@@ -125,22 +125,6 @@ function formatIncomeExpenseNoticeJa(summary, currentBalance) {
 
   return lines.join("\n");
 }
-
-const sampleTransactionsForTest = [
-  { transactionType: "out", amount: 5000, date: "2026-03-24" },
-  {
-    transactionType: "in",
-    amount: 200000,
-    date: "2026-03-24",
-    content: "給与",
-  },
-  {
-    transactionType: "out",
-    amount: 1200,
-    date: "2026-02-10",
-    content: "先月分",
-  },
-];
 
 module.exports = {
   calculateMonthlySummary,
