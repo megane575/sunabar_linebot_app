@@ -9,14 +9,14 @@ const ACCOUNT_ID = process.env.SUNABAR_ACCOUNT_ID;
 // JSTで YYYY-MM-DD を作る関数
 function formatDateJST(date) {
   const jst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-  return jst.toISOString().slice(0, 10);
+  const year = jst.getUTCFullYear();
+  const month = String(jst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(jst.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 async function getBalance() {
   try {
-    console.log("BASE_URL:", BASE_URL);
-    console.log("ACCOUNT_ID:", ACCOUNT_ID);
-
     const response = await axios.get(`${BASE_URL}/accounts/balances`, {
       headers: {
         "x-access-token": TOKEN,
@@ -26,8 +26,9 @@ async function getBalance() {
         accountId: ACCOUNT_ID,
       },
     });
-//balances[0] が無いときのガード
-    if (!response.data.balances?.length) {
+
+    // balances[0] が無いときのガード
+    if (!response.data?.balances?.length) {
       throw new Error("残高データが取得できませんでした");
     }
 
@@ -50,14 +51,12 @@ async function getTransactions() {
     const today = new Date();
     const dateTo = formatDateJST(today);
 
-    const from = new Date();
-    from.setMonth(from.getMonth() - 1);
-    const dateFrom = formatDateJST(from);
-
-    console.log("BASE_URL:", BASE_URL);
-    console.log("ACCOUNT_ID:", ACCOUNT_ID);
-    console.log("dateFrom:", dateFrom);
-    console.log("dateTo:", dateTo);
+    // JST基準の「当月1日」
+    const jstToday = new Date(today.getTime() + 9 * 60 * 60 * 1000);
+    const firstDay = new Date(
+      Date.UTC(jstToday.getUTCFullYear(), jstToday.getUTCMonth(), 1)
+    );
+    const dateFrom = formatDateJST(firstDay);
 
     const response = await axios.get(`${BASE_URL}/accounts/transactions`, {
       headers: {
@@ -73,11 +72,13 @@ async function getTransactions() {
 
     const rawTransactions = response.data.transactions || [];
 
-    return rawTransactions.map((item) => ({
-      transactionType: item.transactionType === "1" ? "in" : "out",
-      amount: Number(item.amount),
-      date: item.transactionDate,
-    }));
+    return rawTransactions
+      .filter((item) => item.transactionType === "1" || item.transactionType === "2")
+      .map((item) => ({
+        transactionType: item.transactionType === "1" ? "in" : "out",
+        amount: Number(item.amount),
+        date: item.transactionDate,
+        }));
   } catch (error) {
     console.error("明細取得エラー");
     console.error("status:", error.response?.status);
@@ -105,4 +106,5 @@ if (require.main === module) {
 module.exports = {
   getBalance,
   getTransactions,
+  formatDateJST,
 };
