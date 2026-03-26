@@ -78,49 +78,67 @@ function formatMonthlySummaryJa(summary) {
   );
 }
 
-function formatIncomeExpenseNoticeJa(summary, currentBalance) {
-  const I = summary.totalIncome; // 今月の収入合計
-  const E = summary.totalExpense; // 今月の支出合計
-
-  // 要件: 入出金が0件なら固定文言
-  if (I === 0 && E === 0) return "入出金ありませんでした";
-
-  const currentBalanceAmount =
-    typeof currentBalance === "number"
-      ? currentBalance
-      : toAmount(currentBalance?.amount);
+/*「残高」コマンドメッセージを作成 */
+function formatBalanceAndSummaryJa(summary, currentBalanceAmount) {
+  const I = summary.totalIncome;
+  const E = summary.totalExpense;
   const B = toAmount(currentBalanceAmount);
 
   const lines = [];
-  lines.push("【残高・収支確認】");
+  lines.push(`現在の残高: ${B.toLocaleString("ja-JP")} 円`);
+  lines.push(`---`);
+  lines.push(`今月の総収入: ${I.toLocaleString("ja-JP")} 円`);
+  lines.push(`今月の総支出: ${E.toLocaleString("ja-JP")} 円`);
 
-  if (Number.isFinite(B)) {
-    lines.push(`現在の残高: ${B.toLocaleString("ja-JP")} 円`);
-    lines.push("---");
+  return lines.join("\n");
+}
 
-    // 月初残高 O = B - I + E
-    const O = B - I + E;
+/*「定期通知用」前日の集計メッセージを作成 */
+function formatDailyReportJa(transactions, currentBalance) {
+  // 前日の日付を取得
+  const now = new Date();
+  // JST補正 (+9時間) してから1日引く
+  const yesterday = new Date(
+    now.getTime() + 9 * 60 * 60 * 1000 - 24 * 60 * 60 * 1000,
+  );
+  console.log("now:", now);
+  console.log("yesterday:", yesterday);
 
-    if (I > 0) {
-      lines.push(`収入: ${I.toLocaleString("ja-JP")} 円`);
-      // 収入を加えた後の残高 = O + I (= B + E)
-      lines.push(`収入を加えた後の残高: ${(O + I).toLocaleString("ja-JP")} 円`);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+  let yesterdayIn = 0;
+  let yesterdayOut = 0;
+
+  // 前日のデータのみ抽出して集計
+  if (Array.isArray(transactions)) {
+    for (const t of transactions) {
+      if (t.date === yesterdayStr) {
+        const amount = toAmount(t.amount);
+        if (t.transactionType === "in") yesterdayIn += amount;
+        if (t.transactionType === "out") yesterdayOut += amount;
+      }
     }
+  }
 
-    if (E > 0) {
-      // 収入がある場合は区切って見やすく
-      if (I > 0) lines.push("---");
-      lines.push(`出金: ${E.toLocaleString("ja-JP")} 円`);
-      // 出金を引いた後の残高 = O + I - E (= B)
-      lines.push(
-        `出金を引いた後の残高: ${(O + I - E).toLocaleString("ja-JP")} 円`,
-      );
-    }
+  const B = toAmount(currentBalance);
+  const lines = [`現在の残高：${B.toLocaleString("ja-JP")}円`, "ーーー"];
+
+  if (yesterdayIn === 0 && yesterdayOut === 0) {
+    // 両方動きがない場合
+    lines.push("前日の入出金はありません");
   } else {
-    if (I > 0) lines.push(`収入: ${I.toLocaleString("ja-JP")} 円`);
-    if (E > 0) lines.push(`出金: ${E.toLocaleString("ja-JP")} 円`);
-    lines.push("---");
-    lines.push("※現在残高を取得できないため、段階の残高は表示できません。");
+    //　入金の表示
+    if (yesterdayIn > 0) {
+      lines.push(`前日の入金：${yesterdayIn.toLocaleString("ja-JP")}円`);
+    } else {
+      lines.push("前日の入金：ありません");
+    }
+    // 出金の表示
+    if (yesterdayOut > 0) {
+      lines.push(`前日の出金：${yesterdayOut.toLocaleString("ja-JP")}円`);
+    } else {
+      lines.push("前日の出金：ありません");
+    }
   }
 
   return lines.join("\n");
@@ -129,8 +147,8 @@ function formatIncomeExpenseNoticeJa(summary, currentBalance) {
 module.exports = {
   calculateMonthlySummary,
   formatMonthlySummaryJa,
-  formatIncomeExpenseNoticeJa,
+  formatDailyReportJa,
+  formatBalanceAndSummaryJa,
   toAmount,
   isInMonth,
-  sampleTransactionsForTest,
 };
