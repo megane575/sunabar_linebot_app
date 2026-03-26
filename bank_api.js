@@ -72,11 +72,13 @@ async function getTransactions() {
 
     const rawTransactions = response.data.transactions || [];
 
-    return rawTransactions.map((item) => ({
-      transactionType: item.transactionType === "1" ? "in" : "out",
-      amount: Number(item.amount),
-      date: item.transactionDate,
-    }));
+    return rawTransactions
+      .filter((item) => item.transactionType === "1" || item.transactionType === "2")
+      .map((item) => ({
+        transactionType: item.transactionType === "1" ? "in" : "out",
+        amount: Number(item.amount),
+        date: item.transactionDate,
+        }));
   } catch (error) {
     console.error("明細取得エラー");
     console.error("status:", error.response?.status);
