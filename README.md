@@ -47,7 +47,7 @@ EventBridgeにより、定期的に収支情報をLINEに通知します。
 
 - Node.js（Lambda）
 - LINE Messaging API
-- Sunabar API（GMOあおぞらネット銀行）
+- sunabar API（GMOあおぞらネット銀行）
 - AWS Lambda
 - Amazon DynamoDB
 - EventBridge
@@ -71,7 +71,7 @@ EventBridgeにより、定期的に収支情報をLINEに通知します。
 - 振込元：ユーザーごとの口座
 - 振込先：固定
 - 金額：LINE入力で指定
-- 承認：Sunabarポータルで実施
+- 承認：sunabarポータルで実施
 
 ---
 
