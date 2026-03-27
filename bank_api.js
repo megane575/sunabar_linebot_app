@@ -3,8 +3,6 @@ require("dotenv").config({ quiet: true });
 const axios = require("axios");
 
 const BASE_URL = process.env.SUNABAR_BASE_URL;
-const TOKEN = process.env.SUNABAR_ACCESS_TOKEN;
-const ACCOUNT_ID = process.env.SUNABAR_ACCOUNT_ID;
 
 // JSTで YYYY-MM-DD を作る関数
 function formatDateJST(date) {
@@ -15,15 +13,15 @@ function formatDateJST(date) {
   return `${year}-${month}-${day}`;
 }
 
-async function getBalance() {
+async function getBalance(sunabarAccessToken, sunabarAccountId) {
   try {
     const response = await axios.get(`${BASE_URL}/accounts/balances`, {
       headers: {
-        "x-access-token": TOKEN,
+        "x-access-token": sunabarAccessToken,
         "Content-Type": "application/json",
       },
       params: {
-        accountId: ACCOUNT_ID,
+        accountId: sunabarAccountId,
       },
     });
 
@@ -46,7 +44,7 @@ async function getBalance() {
   }
 }
 
-async function getTransactions() {
+async function getTransactions(sunabarAccessToken, sunabarAccountId) {
   try {
     const today = new Date();
     const dateTo = formatDateJST(today);
@@ -54,17 +52,17 @@ async function getTransactions() {
     // JST基準の「当月1日」
     const jstToday = new Date(today.getTime() + 9 * 60 * 60 * 1000);
     const firstDay = new Date(
-      Date.UTC(jstToday.getUTCFullYear(), jstToday.getUTCMonth(), 1)
+      Date.UTC(jstToday.getUTCFullYear(), jstToday.getUTCMonth(), 1),
     );
     const dateFrom = formatDateJST(firstDay);
 
     const response = await axios.get(`${BASE_URL}/accounts/transactions`, {
       headers: {
-        "x-access-token": TOKEN,
+        "x-access-token": sunabarAccessToken,
         "Content-Type": "application/json",
       },
       params: {
-        accountId: ACCOUNT_ID,
+        accountId: sunabarAccountId,
         dateFrom,
         dateTo,
       },
@@ -73,12 +71,14 @@ async function getTransactions() {
     const rawTransactions = response.data.transactions || [];
 
     return rawTransactions
-      .filter((item) => item.transactionType === "1" || item.transactionType === "2")
+      .filter(
+        (item) => item.transactionType === "1" || item.transactionType === "2",
+      )
       .map((item) => ({
         transactionType: item.transactionType === "1" ? "in" : "out",
         amount: Number(item.amount),
         date: item.transactionDate,
-        }));
+      }));
   } catch (error) {
     console.error("明細取得エラー");
     console.error("status:", error.response?.status);
