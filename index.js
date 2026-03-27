@@ -110,110 +110,107 @@ exports.handler = async (event) => {
 
   // --- 3. コマンドによる応答ロジック ---
   try {
-  if (!userConfig) {
-    await client.replyMessage(replyToken, {
-      type: "text",
-      text: "ユーザー登録が見つかりません。管理者に連絡してください。",
-    });
-    return { statusCode: 200 };
-  }
-
-  if (reqMessage === "検索") {
-    await client.replyMessage(replyToken, {
-      type: "text",
-      text: "「残高」か「明細」と入力してみてね！！",
-    });
-
-  } else if (reqMessage === "残高") {
-    const balanceData = await bankApi.getBalance(
-      userConfig.sunabarAccessToken,
-      userConfig.sunabarAccountId,
-    );
-    const transactions = await bankApi.getTransactions(
-      userConfig.sunabarAccessToken,
-      userConfig.sunabarAccountId,
-    );
-
-    const summary = logic.calculateMonthlySummary(transactions);
-    const text = logic.formatBalanceAndSummaryJa(summary, balanceData.amount);
-
-    await client.replyMessage(replyToken, {
-      type: "text",
-      text: `${text}`,
-    });
-
-  } else if (reqMessage === "明細") {
-    const transactions = await bankApi.getTransactions(
-      userConfig.sunabarAccessToken,
-      userConfig.sunabarAccountId,
-    );
-    const sortedTransactions = [...transactions].reverse();
-
-    if (transactions.length === 0) {
+    if (!userConfig) {
       await client.replyMessage(replyToken, {
         type: "text",
-        text: "今月の取引明細はありません。",
+        text: "ユーザー登録が見つかりません。管理者に連絡してください。",
       });
-    } else {
-      const summary = logic.calculateMonthlySummary(transactions);
-      const report = logic.formatMonthlySummaryJa(summary);
-
-      const list = sortedTransactions
-        .slice(0, 3)
-        .map((t) => {
-          const type = t.transactionType === "in" ? "[入金]" : "[出金]";
-          return `${t.date} ${type}${t.remark || ""} ${t.amount.toLocaleString()}円`;
-        })
-        .join("\n");
-
-      await client.replyMessage(replyToken, {
-        type: "text",
-        text: `${report}\n\n【直近の動き】\n${list}`,
-      });
+      return { statusCode: 200 };
     }
 
-  } else if (reqMessage.startsWith("振込")) {
-    const parts = reqMessage.split(" ");
-    const amount = Number(parts[1]) || 30000;
+    if (reqMessage === "検索") {
+      await client.replyMessage(replyToken, {
+        type: "text",
+        text: "「残高」か「明細」と入力してみてね！！",
+      });
+    } else if (reqMessage === "残高") {
+      const balanceData = await bankApi.getBalance(
+        userConfig.sunabarAccessToken,
+        userConfig.sunabarAccountId,
+      );
+      const transactions = await bankApi.getTransactions(
+        userConfig.sunabarAccessToken,
+        userConfig.sunabarAccountId,
+      );
 
-    if (!Number.isFinite(amount) || amount <= 0) {
-    await client.replyMessage(replyToken, {
-      type: "text",
-      text: "振込金額が不正です。例: 振込 30000",
-    });
-    return { statusCode: 200 };
-  }
+      const summary = logic.calculateMonthlySummary(transactions);
+      const text = logic.formatBalanceAndSummaryJa(summary, balanceData.amount);
 
-    const result = await requestTransfer(
-      userConfig.sunabarAccessToken,
-      userConfig.sunabarAccountId,
-      amount,
-    );
+      await client.replyMessage(replyToken, {
+        type: "text",
+        text: `${text}`,
+      });
+    } else if (reqMessage === "明細") {
+      const transactions = await bankApi.getTransactions(
+        userConfig.sunabarAccessToken,
+        userConfig.sunabarAccountId,
+      );
+      const sortedTransactions = [...transactions].reverse();
 
-    await client.replyMessage(replyToken, {
-      type: "text",
-      text: `振込依頼を受け付けました
+      if (transactions.length === 0) {
+        await client.replyMessage(replyToken, {
+          type: "text",
+          text: "今月の取引明細はありません。",
+        });
+      } else {
+        const summary = logic.calculateMonthlySummary(transactions);
+        const report = logic.formatMonthlySummaryJa(summary);
+
+        const list = sortedTransactions
+          .slice(0, 3)
+          .map((t) => {
+            const type = t.transactionType === "in" ? "[入金]" : "[出金]";
+            return `${t.date} ${type}${t.remark || ""} ${t.amount.toLocaleString()}円`;
+          })
+          .join("\n");
+
+        await client.replyMessage(replyToken, {
+          type: "text",
+          text: `${report}\n\n【直近の動き】\n${list}`,
+        });
+      }
+    } else if (reqMessage.startsWith("振込")) {
+      const parts = reqMessage.split(" ");
+      const amount = Number(parts[1]) || 30000;
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+        await client.replyMessage(replyToken, {
+          type: "text",
+          text: "振込金額が不正です。例: 振込 30000",
+        });
+        return { statusCode: 200 };
+      }
+
+      const result = await requestTransfer(
+        userConfig.sunabarAccessToken,
+        userConfig.sunabarAccountId,
+        amount,
+      );
+
+      await client.replyMessage(replyToken, {
+        type: "text",
+        text: `振込依頼を受け付けました
       金額: ${amount.toLocaleString()}円
       受付番号: ${result.applyNo}
       実行日: ${result.transferDesignatedDate}
-      ※Sunabarポータルで承認してください`,
-    });
-
-  } else {
-    await client.replyMessage(replyToken, {
-      type: "text",
-      text: "「残高」,「明細」と送ってみてね！",
-    });
+      ※sunabarポータルで承認してください`,
+      });
+    } else {
+      await client.replyMessage(replyToken, {
+        type: "text",
+        text: "「残高」,「明細」と送ってみてね！",
+      });
+    }
+  } catch (err) {
+    console.error("LINE Reply Error:", err);
+    try {
+      await client.replyMessage(replyToken, {
+        type: "text",
+        text: "データの取得中にエラーが発生しました。しばらく時間を置いてから試してね。",
+      });
+    } catch (replyErr) {
+      console.error("Error reporting failure to user:", replyErr);
+    }
   }
-} catch (err) {
-  console.error("LINE Reply Error:", err);
-  try {
-    await client.replyMessage(replyToken, {
-      type: "text",
-      text: "データの取得中にエラーが発生しました。しばらく時間を置いてから試してね。",
-    });
-  } catch (replyErr) {
-    console.error("Error reporting failure to user:", replyErr);
-  }
-}  return { statusCode: 200, body: JSON.stringify({ message: "OK" }) };
+  return { statusCode: 200, body: JSON.stringify({ message: "OK" }) };
 };
