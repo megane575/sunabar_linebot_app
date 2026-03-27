@@ -11,7 +11,6 @@ const {
 const bankApi = require("./bank_api");
 const logic = require("./calc_logic");
 
-//DBの初期化
 const client_db = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client_db);
 
@@ -21,6 +20,16 @@ const config = {
 };
 
 const client = new line.Client(config);
+
+async function getUserConfig(userId) {
+  const { GetCommand } = require("@aws-sdk/lib-dynamodb");
+  const command = new GetCommand({
+    TableName: "LineUsers_forBOT",
+    Key: { userId: userId },
+  });
+  const result = await dynamo.send(command);
+  return result.Item;
+}
 
 exports.handler = async (event) => {
   console.log("Received event:", JSON.stringify(event));
@@ -43,17 +52,20 @@ exports.handler = async (event) => {
         return { statusCode: 200 };
       }
 
-      const balanceData = await bankApi.getBalance();
-      const transactions = await bankApi.getTransactions();
-
-      // 前日用レポート作成関数を呼び出す
-      const messageText = logic.formatDailyReportJa(
-        transactions,
-        balanceData.amount,
-      );
+      // ユーザーごとにループして、それぞれの口座情報を取得して送る
       for (const user of users) {
         const targetId = user.userId;
+        const token = user.sunabarAccessToken;
+        const accountId = user.sunabarAccountId;
+
         try {
+          const balanceData = await bankApi.getBalance(token, accountId);
+          const transactions = await bankApi.getTransactions(token, accountId);
+
+          const messageText = logic.formatDailyReportJa(
+            transactions,
+            balanceData.amount,
+          );
           await client.pushMessage(targetId, {
             type: "text",
             text: `【あさの定期通知】\n${messageText}`,
@@ -92,16 +104,33 @@ exports.handler = async (event) => {
   const replyToken = lineEvent.replyToken;
   const reqMessage = lineEvent.message.text;
 
+  const lineUserId = lineEvent.source.userId;
+  const userConfig = await getUserConfig(lineUserId);
+
   // --- 3. コマンドによる応答ロジック ---
   try {
+    if (!userConfig) {
+      await client.replyMessage(replyToken, {
+        type: "text",
+        text: "ユーザー登録が見つかりません。管理者に連絡してください。",
+      });
+      return { statusCode: 200 };
+    }
+
     if (reqMessage === "検索") {
       await client.replyMessage(replyToken, {
         type: "text",
         text: "「残高」か「明細」と入力してみてね！！",
       });
     } else if (reqMessage === "残高") {
-      const balanceData = await bankApi.getBalance();
-      const transactions = await bankApi.getTransactions();
+      const balanceData = await bankApi.getBalance(
+        userConfig.sunabarAccessToken,
+        userConfig.sunabarAccountId,
+      );
+      const transactions = await bankApi.getTransactions(
+        userConfig.sunabarAccessToken,
+        userConfig.sunabarAccountId,
+      );
 
       // 集計と整形を行う
       const summary = logic.calculateMonthlySummary(transactions);
@@ -112,8 +141,14 @@ exports.handler = async (event) => {
         text: `${text}`,
       });
     } else if (reqMessage === "明細") {
-      const transactions = await bankApi.getTransactions();
-      const sortedTransactions = [...transactions].reverse();
+      const transactions = await bankApi.getTransactions(
+        userConfig.sunabarAccessToken,
+        userConfig.sunabarAccountId,
+      );
+      const sortedTransactions = [...transactions].reverse(
+        userConfig.sunabarAccessToken,
+        userConfig.sunabarAccountId,
+      );
 
       if (transactions.length === 0) {
         await client.replyMessage(replyToken, {
@@ -128,7 +163,7 @@ exports.handler = async (event) => {
           .slice(0, 3)
           .map((t) => {
             const type = t.transactionType === "in" ? "[入金]" : "[出金]";
-            return `${t.date} ${type} ${t.amount.toLocaleString()}円`;
+            return `${t.date} ${type}${t.remark} ${t.amount.toLocaleString()}円`;
           })
           .join("\n");
         await client.replyMessage(replyToken, {
