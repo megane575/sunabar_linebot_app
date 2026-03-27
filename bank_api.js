@@ -78,6 +78,7 @@ async function getTransactions(sunabarAccessToken, sunabarAccountId) {
         transactionType: item.transactionType === "1" ? "in" : "out",
         amount: Number(item.amount),
         date: item.transactionDate,
+        remark: item.remarks,
       }));
   } catch (error) {
     console.error("明細取得エラー");
