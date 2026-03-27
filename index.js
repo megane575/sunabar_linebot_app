@@ -10,6 +10,7 @@ const {
 
 const bankApi = require("./bank_api");
 const logic = require("./calc_logic");
+const { requestTransfer } = require("./transfer_api");
 
 const client_db = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client_db);
@@ -145,10 +146,7 @@ exports.handler = async (event) => {
         userConfig.sunabarAccessToken,
         userConfig.sunabarAccountId,
       );
-      const sortedTransactions = [...transactions].reverse(
-        userConfig.sunabarAccessToken,
-        userConfig.sunabarAccountId,
-      );
+      const sortedTransactions = [...transactions].reverse();
 
       if (transactions.length === 0) {
         await client.replyMessage(replyToken, {
@@ -163,14 +161,32 @@ exports.handler = async (event) => {
           .slice(0, 3)
           .map((t) => {
             const type = t.transactionType === "in" ? "[入金]" : "[出金]";
-            return `${t.date} ${type}${t.remark} ${t.amount.toLocaleString()}円`;
+            return `${t.date} ${type}${t.remark || ""} ${t.amount.toLocaleString()}円`;
           })
           .join("\n");
         await client.replyMessage(replyToken, {
           type: "text",
           text: `${report}\n\n【直近の動き】\n${list}`,
         });
-      }
+      }  else if (reqMessage.startsWith("振込")) {
+  const parts = reqMessage.split(" ");
+  const amount = Number(parts[1]) || 30000;
+
+  const result = await requestTransfer(
+    userConfig.sunabarAccessToken,
+    userConfig.sunabarAccountId,
+    amount
+  );
+
+  await client.replyMessage(replyToken, {
+    type: "text",
+    text: `振込依頼を受け付けました
+    金額: ${amount.toLocaleString()}円
+    受付番号: ${result.applyNo}
+    実行日: ${result.transferDesignatedDate}
+    ※Sunabarポータルで承認してください`,
+  });
+
     } else {
       await client.replyMessage(replyToken, {
         type: "text",
