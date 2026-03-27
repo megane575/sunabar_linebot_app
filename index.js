@@ -121,7 +121,7 @@ exports.handler = async (event) => {
     if (reqMessage === "検索") {
       await client.replyMessage(replyToken, {
         type: "text",
-        text: "「残高」か「明細」と入力してみてね！！",
+        text: "「残高」,「明細」,「振込」と入力してみてね！！",
       });
     } else if (reqMessage === "残高") {
       const balanceData = await bankApi.getBalance(
