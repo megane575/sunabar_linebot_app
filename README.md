@@ -7,6 +7,18 @@ sunabar API と AWS Lambda を利用しています。
 
 ---
 
+## 画面イメージ
+
+### 残高確認・明細確認
+
+<img src="./docs/images/bot_image1.jpg" width="300">
+
+### 振込依頼・朝の定期便
+
+<img src="./docs/images/bot_image2.jpg" width="300">
+
+---
+
 ## 主な機能
 
 ### ① 残高確認
